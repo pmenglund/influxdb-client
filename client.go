@@ -127,6 +127,24 @@ func (c *Client) RawQuery(q string, opt *QueryOptions) (io.ReadCloser, QueryMeta
 	return nil, QueryMeta{}, nil
 }
 
+// Discard discards the output from a query and passes any errors encountered.
+// This will swallow the io.EOF error from the Reader.
+func Discard(r Reader, meta QueryMeta, err error) error {
+	if err != nil {
+		return err
+	}
+
+	defer r.Close()
+	for {
+		if err := r.Read(nil); err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+	}
+}
+
 // WriteOptions is a set of configuration options for writes.
 type WriteOptions struct {
 	Database        string

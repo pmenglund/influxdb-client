@@ -38,11 +38,25 @@ type Result struct {
 	Messages []Message
 }
 
+// ResultError encapsulates an error from a result.
+type ResultError struct {
+	Err string
+}
+
+// Error returns the error returned as part of the result.
+func (e *ResultError) Error() string {
+	return e.Err
+}
+
 // Reader reads query results from a stream.
 type Reader interface {
 	// Read reads the next Result into the Result struct passed in.
 	// This will allocate memory if the slices inside of the Result struct
 	// are not large enough to accomodate the results.
+	// If nil is passed to this method, the results are discarded and only
+	// an error is returned if one happened.
+	// If the next result contains an error, it will be encapsulated within a
+	// ResultError. Any other errors will be returned as-is including io.EOF.
 	Read(*Result) error
 }
 
