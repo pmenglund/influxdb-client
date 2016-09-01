@@ -66,8 +66,12 @@ type ReadCloser interface {
 	io.Closer
 }
 
-// NewReader constructs a new reader from the io.Reader and the QueryMeta data.
-func NewReader(r io.Reader, meta QueryMeta) (Reader, error) {
+// NewReader constructs a new reader from the io.Reader and parses it with
+// the formatter.
+// The following formatters are supported:
+//   * json, application/json
+//   * csv, text/csv
+func NewReader(r io.Reader, format string) (Reader, error) {
 	return nil, nil
 }
 

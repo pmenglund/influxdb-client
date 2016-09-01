@@ -56,7 +56,7 @@ func (c Consistency) String() string {
 // Client is a client that communicates with an InfluxDB server.
 type Client struct {
 	// HTTP client used to talk to the InfluxDB HTTP server.
-	*http.Client
+	Client *http.Client
 
 	// Proto is the protocol to use when issuing client requests. If this is left
 	// blank, it defaults to http.
@@ -90,9 +90,19 @@ func NewClient(url string) (*Client, error) {
 	}, nil
 }
 
-// ParseUrl parses a url and retrieves the protocol, address, and base path (if relevant).
-func ParseUrl(rawurl string) (proto, addr, path string, err error) {
-	return "http", "localhost:8086", "", nil
+// Do sends an HTTP request using the configured Client or http.DefaultClient.
+func (c *Client) Do(req *http.Request) (*http.Response, error) {
+	client := c.Client
+	if client == nil {
+		client = http.DefaultClient
+	}
+	return client.Do(req)
+}
+
+// Ping sends a ping to the server to verify the server is alive and accepting
+// HTTP requests.
+func (c *Client) Ping() error {
+	return nil
 }
 
 // QueryOptions is a set of configuration options for configuring queries.
@@ -111,9 +121,14 @@ type QueryMeta struct {
 	Format string
 }
 
-// Query executes a query and parses the results from the stream.
-func (c *Client) Query(q string, opt *QueryOptions) (Reader, QueryMeta, error) {
-	r, meta, err := c.RawQuery(q, opt)
+// NewQuery creates a new HTTP request for the query.
+func (c *Client) NewQuery(q string, opt *QueryOptions) (*http.Request, error) {
+	return nil, nil
+}
+
+// Select executes a query and parses the results from the stream.
+func (c *Client) Select(q string, opt *QueryOptions) (Reader, error) {
+	r, meta, err := c.SelectRaw(q, opt)
 	if err != nil {
 		return nil, meta, err
 	}
@@ -122,27 +137,11 @@ func (c *Client) Query(q string, opt *QueryOptions) (Reader, QueryMeta, error) {
 	return reader, meta, err
 }
 
-// RawQuery executes a query and returns the raw stream.
-func (c *Client) RawQuery(q string, opt *QueryOptions) (io.ReadCloser, QueryMeta, error) {
-	return nil, QueryMeta{}, nil
-}
-
-// Discard discards the output from a query and passes any errors encountered.
-// This will swallow the io.EOF error from the Reader.
-func Discard(r Reader, meta QueryMeta, err error) error {
-	if err != nil {
-		return err
-	}
-
-	defer r.Close()
-	for {
-		if err := r.Read(nil); err != nil {
-			if err == io.EOF {
-				return nil
-			}
-			return err
-		}
-	}
+// Execute executes a query, discards the results, and returns any error that may have happened.
+// If the error happened as a result of a statement failing for some reason, the error is wrapped
+// in a ResultError.
+func (c *Client) Execute(q string, opt *QueryOptions) error {
+	return nil
 }
 
 // WriteOptions is a set of configuration options for writes.
@@ -151,6 +150,11 @@ type WriteOptions struct {
 	RetentionPolicy string
 	Precision       Precision
 	Consistency     Consistency
+}
+
+// NewWrite creates a new HTTP request for the query.
+func (c *Client) NewWrite(r io.Reader, opt *WriteOptions) (*http.Request, error) {
+	return nil, nil
 }
 
 // Write writes a batch of points over the line protocol to the HTTP /write endpoint.
