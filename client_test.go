@@ -196,7 +196,7 @@ func TestClient_NewQuery(t *testing.T) {
 		Pretty:          true,
 		Format:          "json",
 	}
-	req, err := client.NewQuery("SELECT * FROM cpu", &opt)
+	req, err := client.NewQuery("POST", "SELECT * FROM cpu", &opt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -385,7 +385,7 @@ func TestClient_NewWrite(t *testing.T) {
 	buf := bytes.NewBufferString("expected body")
 
 	client := influxdb.Client{}
-	opt := WriteOptions{
+	opt := influxdb.WriteOptions{
 		Database:        "db0",
 		RetentionPolicy: "rp0",
 		Precision:       influxdb.PrecisionSecond,

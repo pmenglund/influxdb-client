@@ -120,8 +120,8 @@ type QueryMeta struct {
 // application/x-www-form-urlencoded. If the query is an io.Reader, the query is sent
 // as a file using multipart/form-data. The first is more useful for a single ad-hoc
 // query, but the second can be better for running large multi-command queries.
-func (c *Client) NewQuery(q interface{}, opt *QueryOptions) (*http.Request, error) {
-	return &http.Request{URL: &url.URL{}}, nil
+func (c *Client) NewQuery(method string, q interface{}, opt *QueryOptions) (*http.Request, error) {
+	return &http.Request{Method: method, URL: &url.URL{}}, nil
 }
 
 // Select executes a query and parses the results from the stream.
