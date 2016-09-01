@@ -10,17 +10,18 @@ breadth of features within InfluxDB at the same time.
 ```go
 client := influxdb.Client{}
 
-influxdb.Discard(client.Query("CREATE DATABASE mydb", nil))
-defer influxdb.Discard(client.Query("DROP DATABASE mydb", nil))
+influxdb.Execute("CREATE DATABASE mydb", nil)
+defer influxdb.Execute(client.Query("DROP DATABASE mydb", nil))
 
 now := time.Now().Truncate(time.Second).Add(-99*time.Second)
 pts := make([]influxdb.Point, 0, 100)
 for i := 0; i < 100; i++ {
 	pts = append(pts, influxdb.NewPoint("cpu", influxdb.Value(i), now.Add(i*time.Second)))
 }
-client.Write(pts...)
+client.Write(pts, &influxdb.WriteOptions{Database: "mydb"})
 
-reader, _, err := client.Query("SELECT mean(value) FROM cpu")
+reader, _, err := client.Select("SELECT mean(value) FROM cpu",
+	&influxdb.QueryOptions{Database: "mydb"})
 if err != nil {
 	log.Fatal(err)
 }
@@ -48,8 +49,9 @@ Writing data to a database is very simple.
 
 ```go
 client := influxdb.Client{}
+client.Database = "mydb"
 pt := influxdb.NewPoint("cpu", influxdb.Value(2.0), time.Time{})
-client.Write(pt)
+client.Write([]influxdb.Point{pt}, nil)
 ```
 
 This will write the following line over the line protocol:
@@ -67,6 +69,7 @@ fields very easily.
 
 ```go
 client := influxdb.Client{}
+client.Database = "mydb"
 
 fields := influxdb.Fields{
 	"value": 2.0,
@@ -74,7 +77,7 @@ fields := influxdb.Fields{
 }
 pt := influxdb.NewPoint("cpu", fields, time.Time{})
 
-client.Write(pt)
+client.Write([]influxdb.Point{pt}, nil)
 ```
 
 Any of the following types can be used as a field value. The real type
@@ -96,6 +99,7 @@ tags.
 
 ```go
 client := influxdb.Client{}
+client.Database = "mydb"
 
 tags := []influxdb.Tag{
 	{Key: "host", Value: "server01"},
@@ -103,7 +107,7 @@ tags := []influxdb.Tag{
 }
 pt := influxdb.NewPointWithTags("cpu", tags, influxdb.Value(2.0), time.Time{})
 
-client.Write(pt)
+client.Write([]influxdb.Point{pt}, nil)
 ```
 
 When writing, the tags should be sorted for best write performance. The
