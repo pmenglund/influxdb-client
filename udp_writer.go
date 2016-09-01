@@ -12,7 +12,7 @@ type UDPWriter struct {
 
 // NewUDPWriter creates a new UDPWriter.
 func NewUDPWriter(addr string) (WriteCloser, error) {
-	return nil, nil
+	return &UDPWriter{}, nil
 }
 
 // Write writes points to the UDP endpoint. Points written over UDP may be

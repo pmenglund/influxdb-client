@@ -3,6 +3,7 @@ package influxdb
 import (
 	"io"
 	"net/http"
+	"net/url"
 )
 
 // Precision is the requested precision.
@@ -56,7 +57,7 @@ func (c Consistency) String() string {
 // Client is a client that communicates with an InfluxDB server.
 type Client struct {
 	// HTTP client used to talk to the InfluxDB HTTP server.
-	Client *http.Client
+	http.Client
 
 	// Proto is the protocol to use when issuing client requests. If this is left
 	// blank, it defaults to http.
@@ -90,15 +91,6 @@ func NewClient(url string) (*Client, error) {
 	}, nil
 }
 
-// Do sends an HTTP request using the configured Client or http.DefaultClient.
-func (c *Client) Do(req *http.Request) (*http.Response, error) {
-	client := c.Client
-	if client == nil {
-		client = http.DefaultClient
-	}
-	return client.Do(req)
-}
-
 // Ping sends a ping to the server to verify the server is alive and accepting
 // HTTP requests.
 func (c *Client) Ping() error {
@@ -122,25 +114,28 @@ type QueryMeta struct {
 }
 
 // NewQuery creates a new HTTP request for the query.
-func (c *Client) NewQuery(q string, opt *QueryOptions) (*http.Request, error) {
-	return nil, nil
+//
+// The first parameter is for a query. This can either be a string or an io.Reader.
+// If the query is a string, then the query is sent in the body with the content-type
+// application/x-www-form-urlencoded. If the query is an io.Reader, the query is sent
+// as a file using multipart/form-data. The first is more useful for a single ad-hoc
+// query, but the second can be better for running large multi-command queries.
+func (c *Client) NewQuery(q interface{}, opt *QueryOptions) (*http.Request, error) {
+	return &http.Request{URL: &url.URL{}}, nil
 }
 
 // Select executes a query and parses the results from the stream.
-func (c *Client) Select(q string, opt *QueryOptions) (Reader, error) {
-	r, meta, err := c.SelectRaw(q, opt)
-	if err != nil {
-		return nil, meta, err
-	}
-
-	reader, err := NewReader(r, meta)
-	return reader, meta, err
+// The parameters are the same as for NewQuery.
+func (c *Client) Select(q interface{}, opt *QueryOptions) (ReadCloser, error) {
+	return NewReader(nil, "")
 }
 
 // Execute executes a query, discards the results, and returns any error that may have happened.
 // If the error happened as a result of a statement failing for some reason, the error is wrapped
 // in a ResultError.
-func (c *Client) Execute(q string, opt *QueryOptions) error {
+//
+// The parameters are the same as for NewQuery.
+func (c *Client) Execute(q interface{}, opt *QueryOptions) error {
 	return nil
 }
 
@@ -154,7 +149,7 @@ type WriteOptions struct {
 
 // NewWrite creates a new HTTP request for the query.
 func (c *Client) NewWrite(r io.Reader, opt *WriteOptions) (*http.Request, error) {
-	return nil, nil
+	return &http.Request{}, nil
 }
 
 // Write writes a batch of points over the line protocol to the HTTP /write endpoint.

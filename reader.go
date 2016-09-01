@@ -71,9 +71,14 @@ type ReadCloser interface {
 // The following formatters are supported:
 //   * json, application/json
 //   * csv, text/csv
-func NewReader(r io.Reader, format string) (Reader, error) {
-	return nil, nil
+func NewReader(r io.Reader, format string) (ReadCloser, error) {
+	return (*nilReader)(nil), nil
 }
+
+type nilReader struct{}
+
+func (r *nilReader) Read(*Result) error { return nil }
+func (r *nilReader) Close() error       { return nil }
 
 // ForEach reads every result from the reader and executes the function for
 // each one. When an error is returned, the results will stop being processed
