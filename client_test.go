@@ -395,4 +395,36 @@ func TestClient_NewWrite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	if req.Method != "POST" {
+		t.Errorf("Method = %q; want %q", req.Method, "POST")
+	}
+
+	// Query options are put into the URL so they show up in the server log to aid with debugging.
+	values := req.URL.Query()
+	if got, want := values.Get("db"), "db0"; got != want {
+		t.Errorf("db = %q; want %q", got, want)
+	}
+	if got, want := values.Get("rp"), "rp0"; got != want {
+		t.Errorf("rp = %q; want %q", got, want)
+	}
+	if got, want := values.Get("precision"), "s"; got != want {
+		t.Errorf("precision = %q; want %q", got, want)
+	}
+	if got, want := values.Get("consistency"), "one"; got != want {
+		t.Errorf("consistency = %q; want %q", got, want)
+	}
+
+	if req.Body == nil {
+		t.Fatal("expected request to have a body")
+	}
+
+	out, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got, want := string(out), "expected body"; got != want {
+		t.Errorf("body = %q; want %q", got, want)
+	}
 }

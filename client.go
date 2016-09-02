@@ -70,6 +70,12 @@ type Client struct {
 	// Path is the default HTTP path to prefix to all requests.
 	Path string
 
+	// Username to use when authenticating requests.
+	Username string
+
+	// Password to use when authenticating requests.
+	Password string
+
 	// Database is the default database to use when writing or querying.
 	Database string
 
@@ -78,16 +84,25 @@ type Client struct {
 }
 
 // NewClient creates a new client pointed to the parsed hostname.
-func NewClient(url string) (*Client, error) {
-	proto, addr, path, err := ParseUrl(url)
+func NewClient(rawurl string) (*Client, error) {
+	u, err := url.Parse(rawurl)
 	if err != nil {
 		return nil, err
 	}
 
+	var user, pass string
+	if u.User != nil {
+		user = u.User.Username()
+		if p, ok := u.User.Password(); ok {
+			pass = p
+		}
+	}
 	return &Client{
-		Proto: proto,
-		Addr:  addr,
-		Path:  path,
+		Proto:    u.Scheme,
+		Addr:     u.Host,
+		Path:     u.Path,
+		Username: user,
+		Password: pass,
 	}, nil
 }
 
@@ -153,7 +168,7 @@ type WriteOptions struct {
 
 // NewWrite creates a new HTTP request for the query.
 func (c *Client) NewWrite(r io.Reader, opt *WriteOptions) (*http.Request, error) {
-	return &http.Request{}, nil
+	return &http.Request{Method: "POST", URL: &url.URL{}}, nil
 }
 
 // Write writes a batch of points over the line protocol to the HTTP /write endpoint.
