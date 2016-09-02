@@ -134,6 +134,10 @@ func (c *Client) Select(q interface{}, opt *QueryOptions) (ReadCloser, error) {
 // If the error happened as a result of a statement failing for some reason, the error is wrapped
 // in a ResultError.
 //
+// This is most commonly used with meta queries like CREATE, ALTER, DELETE, and
+// DROP queries since the output for those commands don't normally contain any
+// useful information.
+//
 // The parameters are the same as for NewQuery.
 func (c *Client) Execute(q interface{}, opt *QueryOptions) error {
 	return nil
