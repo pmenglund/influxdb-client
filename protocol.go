@@ -7,16 +7,20 @@ import (
 	"strings"
 )
 
-// Encoder implements a protocol encoder.
-type Encoder interface {
+// Protocol implements a protocol encoder.
+type Protocol interface {
+	// Encode encodes the Point into the io.Writer.
 	Encode(w io.Writer, pt *Point) error
+
+	// ContentType returns the Content Type is this protocol format.
+	ContentType() string
 }
 
 // LineProtocol holds the factory methods for different versions of the line protocol.
 var LineProtocol = struct {
-	V1 func() Encoder
+	V1 func() Protocol
 }{
-	V1: func() Encoder { return (*lineProtocolV1)(nil) },
+	V1: func() Protocol { return (*lineProtocolV1)(nil) },
 }
 
 // DefaultWriteProtocol is the default write protocol for points to be written in.
@@ -67,6 +71,10 @@ func (*lineProtocolV1) Encode(w io.Writer, pt *Point) error {
 	}
 	io.WriteString(w, "\n")
 	return nil
+}
+
+func (*lineProtocolV1) ContentType() string {
+	return "application/x-influxdb-line-protocol-v1"
 }
 
 type escapeSequence struct {

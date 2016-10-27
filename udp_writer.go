@@ -11,14 +11,18 @@ type UDPWriter struct {
 }
 
 // NewUDPWriter creates a new UDPWriter.
-func NewUDPWriter(addr string) (WriteCloser, error) {
+func NewUDPWriter(addr string) (*UDPWriter, error) {
 	return &UDPWriter{}, nil
 }
 
 // Write writes points to the UDP endpoint. Points written over UDP may be
 // dropped when the connection is unreliable or is oversaturated. Use the
 // HTTPWriter if you need reliable transportation of metrics.
-func (w *UDPWriter) Write(points ...Point) error {
+func (w *UDPWriter) WritePoint(points ...Point) error {
+	return nil
+}
+
+func (w *UDPWriter) Protocol() Protocol {
 	return nil
 }
 

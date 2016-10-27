@@ -1,6 +1,7 @@
 package influxdb
 
 import (
+	"bytes"
 	"errors"
 	"io"
 	"net/http"
@@ -184,20 +185,56 @@ func (c *Client) Execute(q interface{}, opt *QueryOptions) error {
 
 // WriteOptions is a set of configuration options for writes.
 type WriteOptions struct {
-	Database        string
 	RetentionPolicy string
 	Precision       Precision
 	Consistency     Consistency
 }
 
-// NewWrite creates a new HTTP request for the query.
-func (c *Client) NewWrite(r io.Reader, opt *WriteOptions) (*http.Request, error) {
-	return &http.Request{Method: "POST", URL: &url.URL{}}, nil
+// NewWriteRequest creates a new HTTP request for /write.
+func (c *Client) NewWriteRequest(r io.Reader, db string, opt WriteOptions) (*http.Request, error) {
+	values := url.Values{}
+	values.Set("db", db)
+	if opt.RetentionPolicy != "" {
+		values.Set("rp", opt.RetentionPolicy)
+	}
+	if opt.Precision != "" {
+		values.Set("precision", opt.Precision.String())
+	}
+	if opt.Consistency != "" {
+		values.Set("consistency", opt.Consistency.String())
+	}
+
+	u := c.url("/write")
+	u.RawQuery = values.Encode()
+
+	req, err := http.NewRequest("POST", u.String(), r)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set the Content-Type to line protocol v1. The server doesn't actually read this
+	// value, but it ensures the content type is set to something and isn't misinterpreted
+	// as something else. We may use this format for separate protocol formats in the future.
+	req.Header.Set("Content-Type", "application/x-influxdb-line-protocol-v1")
+	return req, nil
 }
 
 // Write writes a batch of points over the line protocol to the HTTP /write endpoint.
-func (c *Client) Write(points []Point, opt *WriteOptions) error {
+func (c *Client) WritePoints(points []Point, opt *WriteOptions) error {
 	return nil
+}
+
+func (c *Client) WriteBatch(db string, opt WriteOptions, fn func(w Writer) error) error {
+	var buf bytes.Buffer
+	w := NewWriter(&buf, influxdb.DefaultLineProtocol)
+	if err := fn(w); err != nil {
+		return err
+	}
+
+	req, err := c.NewWriteRequest(&buf, db, opt)
+	if err != nil {
+		return err
+	}
 }
 
 func (c *Client) url(path string) *url.URL {

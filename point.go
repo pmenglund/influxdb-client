@@ -2,13 +2,8 @@ package influxdb
 
 import (
 	"errors"
-	"io"
-	"math"
 	"time"
 )
-
-// ZeroTime is the time that indicates there is no time set.
-const ZeroTime = int64(math.MinInt64)
 
 // ErrNoFields is returned when attempting to write with no fields.
 var ErrNoFields = errors.New("no fields")
@@ -27,28 +22,9 @@ func (a Tags) Less(i, j int) bool { return a[i].Key < a[j].Key }
 func (a Tags) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a Tags) Len() int           { return len(a) }
 
-// Write writes the tags in line protocol format. This outputs the beginning
-// comma if there is at least one tag. If there are no tags, this writes
-// nothing.
-func (a Tags) Write(w io.Writer, protocol int) error {
-	if len(a) == 0 {
-		return nil
-	}
-	return nil
-}
-
 // Fields is a mapping of keys to field values. The values must be a float64,
 // int64, string, or bool.
 type Fields map[string]interface{}
-
-// Write writes the fields in line protocol format. An error is returned if
-// there are zero fields.
-func (f Fields) Write(w io.Writer, protocol int) error {
-	if len(f) == 0 {
-		return ErrNoFields
-	}
-	return nil
-}
 
 // Value returns a new Fields map with the value key set to the passed in
 // interface. This is a convenience function for the common use case of

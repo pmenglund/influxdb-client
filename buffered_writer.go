@@ -1,6 +1,9 @@
 package influxdb
 
-import "time"
+import (
+	"bytes"
+	"time"
+)
 
 // BufferOptions contains options for configuring how often the BufferedWriter
 // will flush metrics and how large the buffer will be.
@@ -19,13 +22,14 @@ type BufferOptions struct {
 	RetryLimit int
 
 	// OnFlushError will be called if a batch of points fails to write to the
-	// underlying Writer during an automatic flush. This function will not be
-	// called if the Flush was manually performed.
-	// If this is unset, the points will be dropped and no error message will
-	// be printed. This will only be called if the RetryLimit is exceeded. Do
-	// not try to rewrite the points in this function as a way of retrying a
-	// failed write.
-	OnFlushError func(points []Point, err error)
+	// underlying Writer during a flush. If OnFlushError is unset, the error
+	// will be returned on a Write or Flush. If OnFlushError returns an error,
+	// this error will be returned on a Write or Flush. The OnFlushError
+	// function gets called in the same goroutine as the call that initiated
+	// it. This will only be called if the RetryLimit is exceeeded. Do not try
+	// to rewrite the points in this function as a way of retrying a failed
+	// write.
+	OnFlushError func(err error) error
 }
 
 // BufferedWriter buffers points and writes them to the underlying Writer
@@ -34,6 +38,9 @@ type BufferOptions struct {
 type BufferedWriter struct {
 	w   Writer
 	opt BufferOptions
+
+	buf bytes.Buffer
+	n   int
 }
 
 // NewBufferedWriter creates a new BufferedWriter.
@@ -45,7 +52,7 @@ func NewBufferedWriter(w Writer, opt *BufferOptions) *BufferedWriter {
 // buffer will be flushed. This method does not return an error from a failed
 // flush and will not wait for the flush to complete. Use OnFlushError to act
 // on any errors from automatic flushes.
-func (b *BufferedWriter) Write(points ...Point) error {
+func (b *BufferedWriter) WritePoint(points ...Point) error {
 	return nil
 }
 
@@ -56,8 +63,14 @@ func (b *BufferedWriter) Close() error {
 }
 
 // Flush will force the current buffer to flush and write any buffered metrics
-// to the Writer. If there was some error while writing, that error will be
-// returned here and OnFlushError will not be called.
+// to the Writer. If there was some error while writing, OnFlushError will be
+// called if it is set and any error returned from that will be returned
+// instead.
 func (b *BufferedWriter) Flush() error {
-	return nil
+	var err error
+
+	if err != nil && b.OnFlushError != nil {
+		err = b.OnFlushError(err)
+	}
+	return err
 }

@@ -18,7 +18,6 @@ func TestLineProtocol_V1(t *testing.T) {
 				{Key: "region", Value: "uswest"},
 			},
 			Fields: influxdb.Value(2.0),
-			Time:   influxdb.ZeroTime,
 		},
 	}
 
@@ -46,7 +45,6 @@ func ExampleLineProtocol_V1() {
 				{Key: "region", Value: "uswest"},
 			},
 			Fields: influxdb.Value(2.0),
-			Time:   influxdb.ZeroTime,
 		},
 	}
 

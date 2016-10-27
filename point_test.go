@@ -1,7 +1,6 @@
 package influxdb_test
 
 import (
-	"math"
 	"reflect"
 	"sort"
 	"testing"
@@ -50,8 +49,8 @@ func TestNewPoint(t *testing.T) {
 	if want := influxdb.Fields(map[string]interface{}{"value": 2.0}); !reflect.DeepEqual(pt.Fields, want) {
 		t.Errorf("pt.Fields = %q; want %q", pt.Fields, want)
 	}
-	if pt.Time != now.UnixNano() {
-		t.Errorf("pt.Time = %q; want %q", pt.Time, now.UnixNano())
+	if pt.Time.UnixNano() != now.UnixNano() {
+		t.Errorf("pt.Time = %q; want %q", pt.Time.UnixNano(), now.UnixNano())
 	}
 }
 
@@ -69,37 +68,7 @@ func TestNewPointWithTags(t *testing.T) {
 	if want := influxdb.Fields(map[string]interface{}{"value": 2.0}); !reflect.DeepEqual(pt.Fields, want) {
 		t.Errorf("pt.Fields = %q; want %q", pt.Fields, want)
 	}
-	if pt.Time != now.UnixNano() {
-		t.Errorf("pt.Time = %q; want %q", pt.Time, now.UnixNano())
-	}
-}
-
-func TestPoint_HasTimeSet(t *testing.T) {
-	pt := influxdb.NewPoint("cpu", influxdb.Value(0), time.Time{})
-	if pt.HasTimeSet() {
-		t.Error("expected time to not be set")
-	}
-
-	pt = influxdb.NewPoint("cpu", influxdb.Value(0), time.Now())
-	if !pt.HasTimeSet() {
-		t.Error("expected time to be set")
-	}
-}
-
-func TestPoint_SetTime(t *testing.T) {
-	now := time.Now()
-	pt := influxdb.NewPoint("cpu", influxdb.Value(0), time.Time{})
-	if pt.Time != int64(math.MinInt64) {
-		t.Errorf("pt.Time = %q; want %q", pt.Time, int64(math.MinInt64))
-	}
-
-	pt.SetTime(now)
-	if pt.Time != now.UnixNano() {
-		t.Errorf("pt.Time = %q; want %q", pt.Time, now.UnixNano())
-	}
-
-	pt.SetTime(time.Time{})
-	if pt.Time != int64(math.MinInt64) {
-		t.Errorf("pt.Time = %q; want %q", pt.Time, int64(math.MinInt64))
+	if pt.Time.UnixNano() != now.UnixNano() {
+		t.Errorf("pt.Time = %q; want %q", pt.Time.UnixNano(), now.UnixNano())
 	}
 }

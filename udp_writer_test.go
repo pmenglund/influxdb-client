@@ -49,7 +49,7 @@ func TestUDPWriter(t *testing.T) {
 	defer ticker.Stop()
 
 	for i := 0; i < 10; i++ {
-		if err := w.Write(pt); err != nil {
+		if err := w.WritePoint(pt); err != nil {
 			t.Fatal(err)
 		}
 

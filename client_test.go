@@ -377,17 +377,16 @@ func TestClient_Execute_Failure(t *testing.T) {
 	}
 }
 
-func TestClient_NewWrite(t *testing.T) {
+func TestClient_NewWriteRequest(t *testing.T) {
 	buf := bytes.NewBufferString("expected body")
 
 	client := influxdb.Client{}
 	opt := influxdb.WriteOptions{
-		Database:        "db0",
 		RetentionPolicy: "rp0",
 		Precision:       influxdb.PrecisionSecond,
 		Consistency:     influxdb.ConsistencyOne,
 	}
-	req, err := client.NewWrite(buf, &opt)
+	req, err := client.NewWriteRequest(buf, "db0", opt)
 	if err != nil {
 		t.Fatal(err)
 	}
