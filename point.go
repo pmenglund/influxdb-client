@@ -1,12 +1,6 @@
 package influxdb
 
-import (
-	"errors"
-	"time"
-)
-
-// ErrNoFields is returned when attempting to write with no fields.
-var ErrNoFields = errors.New("no fields")
+import "time"
 
 // Tag is a key/value pair of strings that is indexed when inserted into a measurement.
 type Tag struct {

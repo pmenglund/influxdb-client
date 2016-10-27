@@ -1,6 +1,14 @@
 package influxdb
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
+
+var (
+	// ErrNoFields is returned when attempting to write with no fields.
+	ErrNoFields = errors.New("no fields")
+)
 
 type ErrInvalidPrecision struct {
 	Precision Precision
