@@ -17,3 +17,11 @@ type ErrInvalidPrecision struct {
 func (e ErrInvalidPrecision) Error() string {
 	return fmt.Sprintf("invalid precision: %s", e.Precision)
 }
+
+type ErrPing struct {
+	Cause error
+}
+
+func (e ErrPing) Error() string {
+	return fmt.Sprintf("ping failed: %s", e.Cause)
+}

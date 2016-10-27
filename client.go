@@ -2,8 +2,11 @@ package influxdb
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -112,6 +115,17 @@ func NewClient(rawurl string) (*Client, error) {
 // Ping sends a ping to the server to verify the server is alive and accepting
 // HTTP requests.
 func (c *Client) Ping() error {
+	req, err := http.NewRequest("GET", c.url("/ping").String(), nil)
+	if err != nil {
+		return ErrPing{Cause: err}
+	}
+
+	resp, err := c.Client.Do(req)
+	if err != nil {
+		return ErrPing{Cause: err}
+	} else if resp.StatusCode/100 != 2 {
+		return ErrPing{Cause: errors.New("incorrect status code")}
+	}
 	return nil
 }
 
@@ -226,15 +240,40 @@ func (c *Client) WritePoints(points []Point, opt *WriteOptions) error {
 
 func (c *Client) WriteBatch(db string, opt WriteOptions, fn func(w Writer) error) error {
 	var buf bytes.Buffer
-	w := NewWriter(&buf, influxdb.DefaultLineProtocol)
-	if err := fn(w); err != nil {
-		return err
-	}
-
 	req, err := c.NewWriteRequest(&buf, db, opt)
 	if err != nil {
 		return err
 	}
+
+	w := NewWriter(&buf, DefaultWriteProtocol)
+	if err := fn(w); err != nil {
+		return err
+	}
+
+	resp, err := c.Client.Do(req)
+	if err != nil {
+		return err
+	} else if resp.StatusCode != http.StatusCreated {
+		out, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("unknown http error: %s", resp.StatusCode)
+		}
+
+		msg := string(out)
+		switch resp.Header.Get("Content-Type") {
+		case "application/json":
+			var jsonErr struct {
+				Error string `json:"error"`
+			}
+			if err := json.Unmarshal(out, &jsonErr); err == nil {
+				// Ignore any errors from parsing the JSON from the server.
+				// The server may have just sent a bad message and we don't want to mask that.
+				msg = jsonErr.Error
+			}
+		}
+		return errors.New(msg)
+	}
+	return nil
 }
 
 func (c *Client) url(path string) *url.URL {
