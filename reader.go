@@ -1,13 +1,16 @@
 package influxdb
 
-import "io"
+import (
+	"encoding/json"
+	"io"
+)
 
 // Series represents a series included within the result.
 type Series struct {
-	Name    string
-	Tags    map[string]string
-	Columns []string
-	Values  [][]interface{}
+	Name    string            `json:"name"`
+	Tags    map[string]string `json:"tags"`
+	Columns []string          `json:"columns"`
+	Values  [][]interface{}   `json:"values"`
 }
 
 // SameSeries returns if this is the same series as the other series.
@@ -28,14 +31,14 @@ func (s *Series) SameSeries(o *Series) bool {
 // Message is a user-facing message for informational messages sent by the
 // server for a Result.
 type Message struct {
-	Level string
-	Text  string
+	Level string `json:"level"`
+	Text  string `json:"text"`
 }
 
 // Result is a single result to be read from the query body.
 type Result struct {
-	Series   []Series
-	Messages []Message
+	Series   []Series  `json:"series"`
+	Messages []Message `json:"messages"`
 }
 
 // ResultError encapsulates an error from a result.
@@ -72,12 +75,60 @@ type ReadCloser interface {
 //   * json, application/json
 //   * csv, text/csv
 func NewReader(r io.Reader, format string) (ReadCloser, error) {
+	switch format {
+	case "json", "application/json":
+		return &jsonReader{
+			Reader:  r,
+			Decoder: json.NewDecoder(r),
+		}, nil
+	}
 	return (*nilReader)(nil), nil
+}
+
+type jsonReader struct {
+	Reader  io.Reader
+	Decoder *json.Decoder
+}
+
+func (r *jsonReader) Close() error {
+	if r, ok := r.Reader.(io.Closer); ok {
+		return r.Close()
+	}
+	return nil
+}
+
+func (r *jsonReader) Read(result *Result) error {
+	if result != nil {
+		var v struct {
+			Result
+			Error string `json:"error"`
+		}
+
+		if err := r.Decoder.Decode(&v); err != nil {
+			return err
+		} else if v.Error != "" {
+			return &ResultError{Err: v.Error}
+		}
+		result.Series = v.Result.Series
+		result.Messages = v.Result.Messages
+		return nil
+	}
+
+	var v struct {
+		Error string `json:"error"`
+	}
+
+	if err := r.Decoder.Decode(&v); err != nil {
+		return err
+	} else if v.Error != "" {
+		return &ResultError{Err: v.Error}
+	}
+	return nil
 }
 
 type nilReader struct{}
 
-func (r *nilReader) Read(*Result) error { return nil }
+func (r *nilReader) Read(*Result) error { return io.EOF }
 func (r *nilReader) Close() error       { return nil }
 
 // ForEach reads every result from the reader and executes the function for

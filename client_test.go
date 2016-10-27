@@ -189,14 +189,13 @@ func TestClient_Ping_Failure(t *testing.T) {
 func TestClient_NewQuery(t *testing.T) {
 	client := influxdb.Client{}
 	opt := influxdb.QueryOptions{
-		Database:        "db0",
-		RetentionPolicy: "rp0",
-		Chunked:         true,
-		ChunkSize:       1024,
-		Pretty:          true,
-		Format:          "json",
+		Database:  "db0",
+		Chunked:   true,
+		ChunkSize: 1024,
+		Pretty:    true,
+		Format:    "json",
 	}
-	req, err := client.NewQuery("POST", "SELECT * FROM cpu", &opt)
+	req, err := client.NewQuery("POST", "SELECT * FROM cpu", opt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,9 +208,6 @@ func TestClient_NewQuery(t *testing.T) {
 	values := req.URL.Query()
 	if got, want := values.Get("db"), "db0"; got != want {
 		t.Errorf("db = %q; want %q", got, want)
-	}
-	if got, want := values.Get("rp"), "rp0"; got != want {
-		t.Errorf("rp = %q; want %q", got, want)
 	}
 	if got, want := values.Get("chunked"), "true"; got != want {
 		t.Errorf("chunked = %q; want %q", got, want)

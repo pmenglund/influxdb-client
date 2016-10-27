@@ -1,9 +1,11 @@
 package influxdb
 
 import (
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 // Precision is the requested precision.
@@ -114,13 +116,12 @@ func (c *Client) Ping() error {
 
 // QueryOptions is a set of configuration options for configuring queries.
 type QueryOptions struct {
-	Database        string
-	RetentionPolicy string
-	Chunked         bool
-	ChunkSize       int
-	Pretty          bool
-	Format          string
-	Async           bool
+	Database  string
+	Chunked   bool
+	ChunkSize int
+	Pretty    bool
+	Format    string
+	Async     bool
 }
 
 // QueryMeta has meta information about the query returned by the server.
@@ -135,8 +136,40 @@ type QueryMeta struct {
 // application/x-www-form-urlencoded. If the query is an io.Reader, the query is sent
 // as a file using multipart/form-data. The first is more useful for a single ad-hoc
 // query, but the second can be better for running large multi-command queries.
-func (c *Client) NewQuery(method string, q interface{}, opt *QueryOptions) (*http.Request, error) {
-	return &http.Request{Method: method, URL: &url.URL{}}, nil
+func (c *Client) NewQuery(method string, q interface{}, opt QueryOptions) (*http.Request, error) {
+	values := url.Values{}
+	if opt.Database != "" {
+		values.Set("db", opt.Database)
+	} else if c.Database != "" {
+		values.Set("db", c.Database)
+	}
+
+	u := c.url("/query")
+	u.RawQuery = values.Encode()
+
+	var body io.Reader
+	var contentType string
+	switch q := q.(type) {
+	case string:
+		params := url.Values{}
+		params.Set("q", q)
+		body = strings.NewReader(params.Encode())
+		contentType = "application/x-www-form-urlencoded"
+	default:
+		return nil, errors.New("error")
+	}
+
+	req, err := http.NewRequest(method, u.String(), body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", contentType)
+	return req, nil
+}
+
+func (c *Client) Querier() *Querier {
+	opts := QueryOptions{Chunked: true}
+	return &Querier{c: c, Options: opts}
 }
 
 // Select executes a query and parses the results from the stream.
@@ -145,15 +178,6 @@ func (c *Client) Select(q interface{}, opt *QueryOptions) (ReadCloser, error) {
 	return NewReader(nil, "")
 }
 
-// Execute executes a query, discards the results, and returns any error that may have happened.
-// If the error happened as a result of a statement failing for some reason, the error is wrapped
-// in a ResultError.
-//
-// This is most commonly used with meta queries like CREATE, ALTER, DELETE, and
-// DROP queries since the output for those commands don't normally contain any
-// useful information.
-//
-// The parameters are the same as for NewQuery.
 func (c *Client) Execute(q interface{}, opt *QueryOptions) error {
 	return nil
 }
@@ -174,4 +198,20 @@ func (c *Client) NewWrite(r io.Reader, opt *WriteOptions) (*http.Request, error)
 // Write writes a batch of points over the line protocol to the HTTP /write endpoint.
 func (c *Client) Write(points []Point, opt *WriteOptions) error {
 	return nil
+}
+
+func (c *Client) url(path string) *url.URL {
+	u := url.URL{
+		Scheme: c.Proto,
+		Host:   c.Addr,
+		Path:   path,
+	}
+
+	if u.Scheme == "" {
+		u.Scheme = "http"
+	}
+	if u.Host == "" {
+		u.Host = "127.0.0.1:8086"
+	}
+	return &u
 }
