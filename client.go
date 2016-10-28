@@ -194,6 +194,20 @@ func (c *Client) Select(q interface{}, opt *QueryOptions) (ReadCloser, error) {
 }
 
 func (c *Client) Execute(q interface{}, opt *QueryOptions) error {
+	var qopt QueryOptions
+	if opt != nil {
+		qopt = *opt
+	}
+
+	req, err := c.NewQuery("POST", q, qopt)
+	if err != nil {
+		return err
+	}
+
+	_, err = c.Client.Do(req)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -253,7 +267,7 @@ func (c *Client) WriteBatch(db string, opt WriteOptions, fn func(w Writer) error
 	resp, err := c.Client.Do(req)
 	if err != nil {
 		return err
-	} else if resp.StatusCode != http.StatusCreated {
+	} else if resp.StatusCode != http.StatusNoContent {
 		out, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			return fmt.Errorf("unknown http error: %s", resp.StatusCode)
