@@ -14,32 +14,57 @@ influxdb.Execute("CREATE DATABASE mydb", nil)
 defer influxdb.Execute(client.Query("DROP DATABASE mydb", nil))
 
 now := time.Now().Truncate(time.Second).Add(-99*time.Second)
-pts := make([]influxdb.Point, 0, 100)
-for i := 0; i < 100; i++ {
-	pts = append(pts, influxdb.NewPoint("cpu", influxdb.Value(i), now.Add(i*time.Second)))
-}
-client.Write(pts, &influxdb.WriteOptions{Database: "mydb"})
+pt := influxdb.Point{Name: "cpu"}
+client.WriteBatch(func(w influxdb.Writer) error {
+  for i := 0; i < 100; i++ {
+    pt.Fields = influxdb.Value(i)
+    pt.Time = now.Add(i*time.Second)
+    // You are able to use the same point after every write because the
+    // values are encoded immediately.
+    if err := w.WritePoint(pt); err != nil {
+      return err
+    }
+  }
+})
 
-reader, _, err := client.Select("SELECT mean(value) FROM cpu",
-	&influxdb.QueryOptions{Database: "mydb"})
+cur, err := client.Select("SELECT mean(value) FROM cpu",
+  &influxdb.QueryOptions{Database: "mydb"})
 if err != nil {
 	log.Fatal(err)
 }
-defer reader.Close()
+defer cur.Close()
 
-result := influxdb.Result{}
+// Read the result set from the cursor.
+result, err := cur.NextSet()
+if err != nil {
+  log.Fatal(err)
+}
+
 for {
-	if err := reader.Read(&result); err != nil {
-		log.Fatal(err)
+  series, err := cur.NextSeries()
+  if err != nil {
+    if err == io.EOF {
+      break
+    }
+    log.Fatal(err)
   }
+  columns := result.Columns()
 
-	s := result.Series[0]
-	fmt.Printf("name: %v\n", s.Name)
-	for _, values := range s.Values {
-		for i, column := range s.Columns {
+  fmt.Printf("name: %v\n", series.Name())
+  for {
+    row, err := series.NextRow()
+    if err != nil {
+      if err == io.EOF {
+        break
+      }
+      log.Fatal(err)
+    }
+
+    values := row.Values()
+    for i, column := range columns {
 			fmt.Printf("%v: %v\n", column, values[i])
-		}
-	}
+    }
+  }
 }
 ```
 
@@ -51,7 +76,7 @@ Writing data to a database is very simple.
 client := influxdb.Client{}
 client.Database = "mydb"
 pt := influxdb.NewPoint("cpu", influxdb.Value(2.0), time.Time{})
-client.Write([]influxdb.Point{pt}, nil)
+client.WritePoints([]influxdb.Point{pt}, nil)
 ```
 
 This will write the following line over the line protocol:
@@ -77,7 +102,7 @@ fields := influxdb.Fields{
 }
 pt := influxdb.NewPoint("cpu", fields, time.Time{})
 
-client.Write([]influxdb.Point{pt}, nil)
+client.WritePoints([]influxdb.Point{pt}, nil)
 ```
 
 Any of the following types can be used as a field value. The real type

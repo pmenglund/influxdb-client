@@ -128,6 +128,8 @@ func formatValue(v interface{}) (string, error) {
 	switch v := v.(type) {
 	case float64:
 		return strconv.FormatFloat(v, 'g', 6, 64), nil
+	case float32:
+		return strconv.FormatFloat(float64(v), 'g', 6, 64), nil
 	case int64:
 		return strconv.FormatInt(v, 64) + "i", nil
 	case int32:
