@@ -182,15 +182,27 @@ func (c *Client) NewQuery(method string, q interface{}, opt QueryOptions) (*http
 	return req, nil
 }
 
-func (c *Client) Querier() *Querier {
-	opts := QueryOptions{Chunked: true}
-	return &Querier{c: c, Options: opts}
-}
-
 // Select executes a query and parses the results from the stream.
 // The parameters are the same as for NewQuery.
-func (c *Client) Select(q interface{}, opt *QueryOptions) (ReadCloser, error) {
-	return NewReader(nil, "")
+func (c *Client) Select(q interface{}, opt *QueryOptions) (Cursor, error) {
+	var qopt QueryOptions
+	if opt != nil {
+		qopt = *opt
+	}
+
+	req, err := c.NewQuery("GET", q, qopt)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.Client.Do(req)
+	if err != nil {
+		return nil, err
+	} else if resp.StatusCode != http.StatusOK {
+		return nil, c.readErr(resp)
+	}
+	format := resp.Header.Get("Content-Type")
+	return NewCursor(resp.Body, format)
 }
 
 func (c *Client) Execute(q interface{}, opt *QueryOptions) error {
@@ -268,24 +280,7 @@ func (c *Client) WriteBatch(db string, opt WriteOptions, fn func(w Writer) error
 	if err != nil {
 		return err
 	} else if resp.StatusCode != http.StatusNoContent {
-		out, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return fmt.Errorf("unknown http error: %s", resp.StatusCode)
-		}
-
-		msg := string(out)
-		switch resp.Header.Get("Content-Type") {
-		case "application/json":
-			var jsonErr struct {
-				Error string `json:"error"`
-			}
-			if err := json.Unmarshal(out, &jsonErr); err == nil {
-				// Ignore any errors from parsing the JSON from the server.
-				// The server may have just sent a bad message and we don't want to mask that.
-				msg = jsonErr.Error
-			}
-		}
-		return errors.New(msg)
+		return c.readErr(resp)
 	}
 	return nil
 }
@@ -304,4 +299,28 @@ func (c *Client) url(path string) *url.URL {
 		u.Host = "127.0.0.1:8086"
 	}
 	return &u
+}
+
+// readErr reads the HTTP response for an error and returns it.
+// It currently only supports errors sent back as JSON.
+func (c *Client) readErr(resp *http.Response) error {
+	out, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		return fmt.Errorf("unknown http error: %s", resp.StatusCode)
+	}
+
+	msg := string(out)
+	switch resp.Header.Get("Content-Type") {
+	case "application/json":
+		var jsonErr struct {
+			Error string `json:"error"`
+		}
+		if err := json.Unmarshal(out, &jsonErr); err == nil {
+			// Ignore any errors from parsing the JSON from the server.
+			// The server may have just sent a bad message and we don't want to mask that.
+			msg = jsonErr.Error
+		}
+	}
+	return errors.New(msg)
 }

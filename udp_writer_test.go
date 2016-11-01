@@ -29,10 +29,7 @@ func TestUDPWriter(t *testing.T) {
 		defer close(done)
 
 		data := make([]byte, MAX_UDP_PAYLOAD)
-		_, _, err := conn.ReadFromUDP(data)
-		if err != nil {
-			t.Error(err)
-		}
+		_, _, _ = conn.ReadFromUDP(data)
 	}()
 
 	// Create the UDP writer.

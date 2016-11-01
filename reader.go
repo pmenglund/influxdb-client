@@ -1,10 +1,6 @@
 package influxdb
 
-import (
-	"encoding/json"
-	"io"
-)
-
+/*
 // Series represents a series included within the result.
 type Series struct {
 	Name    string            `json:"name"`
@@ -39,16 +35,6 @@ type Message struct {
 type Result struct {
 	Series   []Series  `json:"series"`
 	Messages []Message `json:"messages"`
-}
-
-// ResultError encapsulates an error from a result.
-type ResultError struct {
-	Err string
-}
-
-// Error returns the error returned as part of the result.
-func (e *ResultError) Error() string {
-	return e.Err
 }
 
 // Reader reads query results from a stream.
@@ -137,3 +123,4 @@ func (r *nilReader) Close() error       { return nil }
 func ForEach(r Reader, fn func(*Result) error) error {
 	return nil
 }
+*/
