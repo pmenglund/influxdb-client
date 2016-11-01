@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"sort"
+	"time"
 )
 
 // Cursor is a cursor that reads and decodes a ResultSet.
@@ -20,9 +21,6 @@ type Cursor interface {
 
 	//ResultSet
 }
-
-// Row is a row of values in the ResultSet.
-type Row []interface{}
 
 // ResultSet encapsulates a result from a single command.
 type ResultSet interface {
@@ -53,6 +51,22 @@ type Series interface {
 
 	// NextRow returns the next row in the result.
 	NextRow() (Row, error)
+}
+
+// Row is a row of values in the ResultSet.
+type Row interface {
+	// Time returns the time column as a time.Time if it exists in the Row.
+	Time() time.Time
+
+	// Value returns value at index. If an invalid index is given, this will panic.
+	Value(index int) interface{}
+
+	// Values returns the values from the row as an array slice.
+	Values() []interface{}
+
+	// ValueByName returns the value by a named column. If the column does not
+	// exist, this will return nil.
+	ValueByName(column string) interface{}
 }
 
 // NewCursor constructs a new cursor from the io.ReadCloser and parses it with
@@ -122,6 +136,11 @@ func (c *jsonCursor) NextSet() (ResultSet, error) {
 	// Keep track of the currently active ResultSet so we can later invalidate
 	// it if we need to.
 	c.cur = c.buf.Results[0]
+	if c.cur.Err != "" {
+		// Return an error instead of the ResultSet if the result contained an error.
+		return nil, ErrResult{Err: c.cur.Err}
+	}
+
 	c.buf.Results = c.buf.Results[1:]
 	if c.cur.Partial {
 		c.cur.cur = c
@@ -151,7 +170,8 @@ type jsonResult struct {
 		Values  [][]interface{}   `json:"values"`
 		Partial bool              `json:"partial"`
 	} `json:"series"`
-	Partial bool `json:"partial"`
+	Partial bool   `json:"partial"`
+	Err     string `json:"error"`
 
 	index         int
 	columns       []string
@@ -238,6 +258,9 @@ func (r *jsonResult) NextSeries() (Series, error) {
 					// result. We must use the same result struct so that we
 					// keep all references.
 					result := r.cur.buf.Results[0]
+					if result.Err != "" {
+						return nil, ErrResult{Err: result.Err}
+					}
 					r.cur.buf.Results = r.cur.buf.Results[1:]
 					r.Series = result.Series
 					r.Partial = result.Partial
@@ -285,6 +308,9 @@ func (r *jsonResult) NextSeries() (Series, error) {
 		// result. We must use the same result struct so that we
 		// keep all references.
 		result := r.cur.buf.Results[0]
+		if result.Err != "" {
+			return nil, ErrResult{Err: result.Err}
+		}
 		r.cur.buf.Results = r.cur.buf.Results[1:]
 		r.Series = result.Series
 		r.Partial = result.Partial
@@ -368,6 +394,9 @@ func (s *jsonSeries) NextRow() (Row, error) {
 			// result. We must use the same result struct so that we
 			// keep all references.
 			result := s.r.cur.buf.Results[0]
+			if result.Err != "" {
+				return nil, ErrResult{Err: result.Err}
+			}
 			s.r.cur.buf.Results = s.r.cur.buf.Results[1:]
 			s.r.Series = result.Series
 			s.r.Partial = result.Partial
@@ -384,7 +413,55 @@ func (s *jsonSeries) NextRow() (Row, error) {
 
 	v := s.values[0]
 	s.values = s.values[1:]
-	return v, nil
+	return jsonRow{values: v, result: s.r}, nil
+}
+
+type jsonRow struct {
+	values []interface{}
+	result *jsonResult
+}
+
+func (r jsonRow) Time() time.Time {
+	// Retrieve the value for the time column if it exists. This is usually the
+	// first column so this should be pretty fast. Column indexing is also
+	// shared between rows.
+	v := r.ValueByName("time")
+	if v == nil {
+		return time.Time{}
+	}
+
+	// Attempt to cast this to a string. We return string values for the time.
+	// If we don't get a string, something weird has happened so we don't have
+	// a time.
+	ts, ok := v.(string)
+	if !ok {
+		return time.Time{}
+	}
+
+	// Parse the time using RFC3339Nano. This also accepts RFC3339 without
+	// nanoseconds. If it doesn't parse, then the time column does not contain
+	// a time value.
+	t, err := time.Parse(time.RFC3339Nano, ts)
+	if err != nil {
+		return time.Time{}
+	}
+	return t
+}
+
+func (r jsonRow) Value(index int) interface{} {
+	return r.values[index]
+}
+
+func (r jsonRow) Values() []interface{} {
+	return r.values
+}
+
+func (r jsonRow) ValueByName(column string) interface{} {
+	index := r.result.Index(column)
+	if index == -1 {
+		return nil
+	}
+	return r.values[index]
 }
 
 type nilResultSet struct{}
