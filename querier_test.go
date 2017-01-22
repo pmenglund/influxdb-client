@@ -20,9 +20,6 @@ func TestQuerier_Select_Param(t *testing.T) {
 		if got, want := values.Get("db"), "db0"; got != want {
 			t.Errorf("db = %q; want %q", got, want)
 		}
-		if got, want := values.Get("rp"), ""; got != want {
-			t.Errorf("rp = %q; want %q", got, want)
-		}
 		if got, want := values.Get("params"), `{"host":"server01"}`; got != want {
 			t.Errorf("params = %q; want %q", got, want)
 		}

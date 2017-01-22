@@ -230,14 +230,18 @@ func (c *Client) newQueryRequest(q interface{}, readonly bool, opt QueryOptions)
 // To specify options, use Querier to create a Querier and set the options on that.
 func (c *Client) Select(q interface{}, opts ...QueryOption) (Cursor, error) {
 	querier := Querier{c: c}
-	return querier.Select(q)
+	return querier.Select(q, opts...)
 }
 
 // Execute executes a query and returns if any error occurred.
 // To specify options, use Querier to create a Querier and set the options on that.
 func (c *Client) Execute(q interface{}, opts ...QueryOption) error {
 	querier := Querier{c: c}
-	return querier.Execute(q)
+	return querier.Execute(q, opts...)
+}
+
+func (c *Client) Writer() *Writer {
+	return &Writer{c: c}
 }
 
 // url constructs a URL object for this client.

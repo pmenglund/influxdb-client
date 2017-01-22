@@ -44,13 +44,21 @@ func (e ErrResult) Error() string {
 	return e.Err
 }
 
+type ErrPartialWrite struct {
+	Err string
+}
+
+func (e ErrPartialWrite) Error() string {
+	return e.Err
+}
+
 // ReadError reads the HTTP response for an error and returns it.
 // It currently only supports errors sent back as JSON.
 func ReadError(resp *http.Response) error {
 	out, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
-	if err != nil {
-		return fmt.Errorf("unknown http error: %s", resp.StatusCode)
+	if err != nil || len(out) == 0 {
+		return fmt.Errorf("unknown http error: %s", resp.Status)
 	}
 
 	msg := string(out)

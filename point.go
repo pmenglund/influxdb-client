@@ -1,6 +1,9 @@
 package influxdb
 
-import "bytes"
+import (
+	"bytes"
+	"time"
+)
 
 // Tag is a key/value pair of strings that is indexed when inserted into a measurement.
 type Tag struct {
@@ -27,4 +30,12 @@ func (a Tags) String() string {
 		buf.WriteString(t.Value)
 	}
 	return buf.String()
+}
+
+// Point represents a point to be written.
+type Point struct {
+	Name   string
+	Tags   Tags
+	Fields map[string]interface{}
+	Time   time.Time
 }
