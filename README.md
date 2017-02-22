@@ -1,6 +1,9 @@
 # InfluxDB Client
-[![GoDoc Reference](https://godoc.org/github.com/influxdata/influxdb-client?status.svg)](https://godoc.org/github.com/influxdata/influxdb-client) [![experimental](http://badges.github.io/stability-badges/dist/experimental.svg)](http://github.com/badges/stability-badges)
+[![GoDoc Reference](https://godoc.org/github.com/influxdata/influxdb-client?status.svg)](https://godoc.org/github.com/influxdata/influxdb-client) [![deprecated](http://badges.github.io/stability-badges/dist/deprecated.svg)](http://github.com/badges/stability-badges)
 
-An experimental client library for InfluxDB. This client library is
-designed to make working with InfluxDB easier and support the full
-breadth of features within InfluxDB at the same time.
+A deprecated client library for InfluxDB. Instead of this use the
+[client]https://github.com/influxdata/influxdb/client) in the
+main [influxdb]https://github.com/influxdata/influxdb/) repo,
+by using this in your code
+
+    import "github.com/influxdata/influxdb/client/v2"
